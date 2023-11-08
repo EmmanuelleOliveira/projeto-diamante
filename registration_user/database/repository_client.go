@@ -3,14 +3,14 @@ package database
 import (
 	"database/sql"
 
-	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/domain"
+	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/domain/client"
 )
 
 type ClientRepository struct {
 	Db *sql.DB
 }
 
-func (c *ClientRepository) Save(client *domain.Client) error {
+func (c *ClientRepository) Save(client *client.Client) error {
 	stmt, err := c.Db.Prepare("INSERT INTO user(name, email, document_number, phone_number, cep, street, city, uf) VALUES (?,?,?,?,?,?,?,?)")
 	if err != nil {
 		return err
@@ -22,7 +22,7 @@ func (c *ClientRepository) Save(client *domain.Client) error {
 		client.Email,
 		client.DocumentNumber,
 		client.PhoneNumber,
-		client.Address.Cep,
+		client.Cep,
 		client.Address.Street,
 		client.Address.City,
 		client.Address.UF,
@@ -34,73 +34,68 @@ func (c *ClientRepository) Save(client *domain.Client) error {
 	return nil
 }
 
-type ListClients struct {
-	Clients []*domain.Client
-}
-
-func (c *ClientRepository) GetAll() (*ListClients, error) {
+func (c *ClientRepository) GetAll() ([]*client.Client, error) {
 	response, err := c.Db.Query("SELECT * FROM user")
 
 	if err != nil {
-		return &ListClients{}, err
+		return nil, err
 	}
 	defer response.Close()
 
-	var clients []*domain.Client
+	var clients []*client.Client
 
 	for response.Next() {
-		var client domain.Client
-		var address domain.AddressClient
+		client := &client.Client{}
+
 		err := response.Scan(
 			&client.Id,
 			&client.Name,
 			&client.Email,
 			&client.DocumentNumber,
 			&client.PhoneNumber,
-			&address.Cep,
-			&address.Street,
-			&address.City,
-			&address.UF,
+			&client.Cep,
+			&client.Address.Street,
+			&client.Address.City,
+			&client.Address.UF,
 		)
 		if err != nil {
 			return nil, err
 		}
-		client.Address = address
-		clients = append(clients, &client)
+		clients = append(clients, client)
 	}
 
-	return &ListClients{
-		Clients: clients,
-	}, nil
+	return clients, nil
 }
 
-func (c *ClientRepository) GetClientByDocumentNumber(docNumber string) (*domain.Client, error) {
-	var client domain.Client
-	var address domain.AddressClient
+func (c *ClientRepository) GetClientByDocumentNumber(docNumber string) (*client.Client, error) {
+	stmt, err := c.Db.Prepare("SELECT * FROM user WHERE document_number = ?")
+	if err != nil {
+		return nil, err
+	}
 
-	response := c.Db.QueryRow("SELECT id, name, email, document_number, phone_number, cep, street, city, uf FROM user WHERE document_number = ?", docNumber)
+	defer stmt.Close()
 
-	err := response.Scan(
+	client := &client.Client{}
+
+	err = stmt.QueryRow(docNumber).Scan(
 		&client.Id,
 		&client.Name,
 		&client.Email,
 		&client.DocumentNumber,
 		&client.PhoneNumber,
-		&address.Cep,
-		&address.Street,
-		&address.City,
-		&address.UF,
+		&client.Cep,
+		&client.Address.Street,
+		&client.Address.City,
+		&client.Address.UF,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	client.Address = address
-
-	return &client, nil
+	return client, nil
 }
 
-func (c *ClientRepository) Update(client *domain.Client) error {
+func (c *ClientRepository) Update(client *client.Client) error {
 	stmt, err := c.Db.Prepare("UPDATE user SET name=?, email=?, document_number=?, phone_number=?, cep=?, street=?, city=?, uf=? WHERE id=?")
 	if err != nil {
 		return err
@@ -112,7 +107,7 @@ func (c *ClientRepository) Update(client *domain.Client) error {
 		client.Email,
 		client.DocumentNumber,
 		client.PhoneNumber,
-		client.Address.Cep,
+		client.Cep,
 		client.Address.Street,
 		client.Address.City,
 		client.Address.UF,
@@ -125,19 +120,43 @@ func (c *ClientRepository) Update(client *domain.Client) error {
 	return nil
 }
 
-func (c *ClientRepository) Delete(id int) error {
-	stmt, err := c.Db.Prepare("DELETE FROM user WHERE id=?")
+func (c *ClientRepository) Delete(documentNumber string) error {
+	stmt, err := c.Db.Prepare("DELETE FROM user WHERE document_number=?")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(id)
+	_, err = stmt.Exec(documentNumber)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (c *ClientRepository) CheckClientExists(docNumber string) (*client.Client, error) {
+	stmt, err := c.Db.Prepare("SELECT document_number FROM user WHERE document_number = ?")
+
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	var client *client.Client
+
+	err = stmt.QueryRow(docNumber).Scan(&client.DocumentNumber)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if client.DocumentNumber != "" {
+		return client, nil
+	}
+
+	return nil, nil
+
 }
 
 //Criar func getAll() lista de clients{}

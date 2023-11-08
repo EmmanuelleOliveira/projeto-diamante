@@ -16,6 +16,7 @@ var (
 	ErrClientNotExist        = errors.New("client not exist")
 	ErrUpdateClient          = errors.New("error updating client")
 	ErrGetAllCLients         = errors.New("get all clients fail")
+	ErrClientDelete          = errors.New("error deleting client")
 )
 
 type Service struct {
@@ -30,7 +31,7 @@ func (s *Service) CreateNewClient(client *Client) (*Client, error) {
 
 	client.DocumentNumber = documentValidated
 
-	clientExist, _ := s.Repository.CheckClientExists(client.DocumentNumber, client.Email)
+	clientExist, _ := s.Repository.CheckClientExists(client.DocumentNumber)
 	if clientExist != nil {
 		return nil, ErrClientAlreadyExists
 	}
@@ -60,7 +61,7 @@ func (s *Service) UpdateClient(client *Client) (*Client, error) {
 
 	client.DocumentNumber = documentValidated
 
-	clientExist, _ := s.Repository.CheckClientExists(client.DocumentNumber, client.Email)
+	clientExist, _ := s.Repository.CheckClientExists(client.DocumentNumber)
 	if clientExist == nil {
 		return nil, ErrClientNotExist
 	}
@@ -90,12 +91,14 @@ func (s *Service) UpdateClient(client *Client) (*Client, error) {
 }
 
 func (s *Service) GetAll() ([]*Client, error) {
+	var clients []*Client
+
 	clients, err := s.Repository.GetAll()
 	if err != nil {
 		return nil, ErrGetAllCLients
 	}
 
-	return clients.Clients, nil
+	return clients, nil
 }
 
 func (s *Service) GetClientByDocumentNumber(documentNumber string) (*Client, error) {
@@ -104,12 +107,27 @@ func (s *Service) GetClientByDocumentNumber(documentNumber string) (*Client, err
 		return nil, ErrDocumentNumberInvalid
 	}
 
-	client, err := s.GetClientByDocumentNumber(documentValidated)
+	client, err := s.Repository.GetClientByDocumentNumber(documentValidated)
 	if err != nil {
 		return nil, ErrClientNotExist
 	}
 
 	return client, nil
+}
+
+func (s *Service) DeleteClient(documentNumber string) error {
+	documentValidated, err := s.ValidateDocumentNumber(documentNumber)
+	if err != nil {
+		return ErrDocumentNumberInvalid
+	}
+
+	err = s.Repository.Delete(documentValidated)
+	if err != nil {
+		return ErrClientDelete
+	}
+
+	return nil
+
 }
 
 func (s *Service) ValidateDocumentNumber(documentNumber string) (string, error) {
