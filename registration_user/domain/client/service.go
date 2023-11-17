@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -36,12 +37,20 @@ func (s *Service) CreateNewClient(client *Client) (*Client, error) {
 		return nil, ErrClientAlreadyExists
 	}
 
-	addressObj, err := SearchZipCode(client.Cep)
+	cep, err := s.ValidateCep(client.Cep)
+	if err != nil {
+		return nil, err
+	}
+
+	client.Cep = cep
+
+	addressObj, err := SearchZipCode(cep)
 	if err != nil {
 		return nil, ErrZipCodeInvalid
 	}
 
 	clientObj := NewClient(client, addressObj)
+	fmt.Println(clientObj)
 
 	err = s.Repository.Save(clientObj)
 	if err != nil {
@@ -51,25 +60,30 @@ func (s *Service) CreateNewClient(client *Client) (*Client, error) {
 	return clientObj, nil
 }
 
-func (s *Service) UpdateClient(client *Client) (*Client, error) {
+func (s *Service) Update(client *Client) error {
 	var addressObj *AddressClient
 
 	documentValidated, err := s.ValidateDocumentNumber(client.DocumentNumber)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	client.DocumentNumber = documentValidated
 
 	clientExist, _ := s.Repository.CheckClientExists(client.DocumentNumber)
 	if clientExist == nil {
-		return nil, ErrClientNotExist
+		return ErrClientNotExist
 	}
 
 	if client.Cep != clientExist.Cep {
-		addressObj, err = SearchZipCode(client.Cep)
+		cep, err := s.ValidateCep(client.Cep)
 		if err != nil {
-			return nil, ErrZipCodeInvalid
+			return err
+		}
+
+		addressObj, err = SearchZipCode(cep)
+		if err != nil {
+			return ErrZipCodeInvalid
 		}
 	} else {
 		addressObj = &AddressClient{
@@ -81,12 +95,14 @@ func (s *Service) UpdateClient(client *Client) (*Client, error) {
 
 	clientObj := NewClient(client, addressObj)
 
+	clientObj.Id = clientExist.Id
+
 	err = s.Repository.Update(clientObj)
 	if err != nil {
-		return nil, ErrUpdateClient
+		return ErrUpdateClient
 	}
 
-	return clientObj, nil
+	return nil
 
 }
 
@@ -115,7 +131,7 @@ func (s *Service) GetClientByDocumentNumber(documentNumber string) (*Client, err
 	return client, nil
 }
 
-func (s *Service) DeleteClient(documentNumber string) error {
+func (s *Service) Delete(documentNumber string) error {
 	documentValidated, err := s.ValidateDocumentNumber(documentNumber)
 	if err != nil {
 		return ErrDocumentNumberInvalid
@@ -142,6 +158,19 @@ func (s *Service) ValidateDocumentNumber(documentNumber string) (string, error) 
 
 }
 
+func (s *Service) ValidateCep(cep string) (string, error) {
+
+	re := regexp.MustCompile(`^\d{5}-\d{3}$`)
+
+	if re.MatchString(cep) {
+		cepObj, _ := regexp.Compile(`[-.,-]`)
+		cepValidated := cepObj.ReplaceAllString(cep, "")
+		return cepValidated, nil
+	} else {
+		return "", ErrZipCodeInvalid
+	}
+}
+
 func SearchZipCode(cep string) (*AddressClient, error) {
 	resp, err := http.Get("http://viacep.com.br/ws/" + cep + "/json")
 	if err != nil {
@@ -155,11 +184,28 @@ func SearchZipCode(cep string) (*AddressClient, error) {
 		return nil, err
 	}
 
+	var jsonResponse struct {
+		Erro bool `json:"erro"`
+	}
+
+	err = json.Unmarshal(body, &jsonResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	if jsonResponse.Erro {
+		return nil, errors.New("zip code invalid")
+	}
+
 	var c AddressClient
 
 	err = json.Unmarshal(body, &c)
 	if err != nil {
 		return nil, err
+	}
+
+	if c.Street == "" && c.City == "" && c.UF == "" {
+		return nil, errors.New("zip code invalid")
 	}
 
 	return &c, nil

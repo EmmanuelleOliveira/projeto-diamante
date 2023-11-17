@@ -1,0 +1,49 @@
+syntax = "proto3";
+package pb;
+option go_package = "client/pb";
+
+message Client {
+    int32 id = 1;
+    string name = 2;
+    string email = 3;
+    string document_number = 4;
+    string phone_number = 5;
+    string cep = 6;
+    Address address = 7;
+}
+
+message Address {
+    string street = 1;
+    string city = 2;
+    string uf = 3;
+}
+
+message ClientRequest {
+  string name = 1;
+  string email = 2;
+  string document_number = 3;
+  string phone_number = 4;
+  string cep = 5;
+}
+
+message ClientResponse {
+    Client client = 1;
+    string error = 2;
+}
+
+message GetAllClientsResponse {
+    repeated Client clients = 1;
+    string error = 2;
+}
+
+message ErrorResponse {
+    string error = 1;
+}
+
+service ClientService {
+    rpc CreateClient(ClientRequest) returns (ClientResponse) {}
+    rpc GetAllClients(Empty) returns (GetAllClientsResponse) {}
+    rpc GetClient(string) returns (ClientResponse) {}
+    rpc UpdateClient(ClientRequest) returns (ErrorResponse) {}
+    rpc DeleteClient(string) returns (ErrorResponse) {}
+}

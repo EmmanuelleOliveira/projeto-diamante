@@ -136,16 +136,26 @@ func (c *ClientRepository) Delete(documentNumber string) error {
 }
 
 func (c *ClientRepository) CheckClientExists(docNumber string) (*client.Client, error) {
-	stmt, err := c.Db.Prepare("SELECT document_number FROM user WHERE document_number = ?")
+	stmt, err := c.Db.Prepare("SELECT * FROM user WHERE document_number = ?")
 
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
 
-	var client *client.Client
+	client := &client.Client{}
 
-	err = stmt.QueryRow(docNumber).Scan(&client.DocumentNumber)
+	err = stmt.QueryRow(docNumber).Scan(
+		&client.Id,
+		&client.Name,
+		&client.Email,
+		&client.DocumentNumber,
+		&client.PhoneNumber,
+		&client.Cep,
+		&client.Address.Street,
+		&client.Address.City,
+		&client.Address.UF,
+	)
 
 	if err != nil {
 		return nil, err
