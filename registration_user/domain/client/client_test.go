@@ -3,11 +3,12 @@ package client
 import (
 	"testing"
 
+	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/client/pb"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
-	clientMock = &Client{
+	clientMock = &pb.ClientRequest{
 		Name:           "Manu",
 		Email:          "manu@gmail.com",
 		DocumentNumber: "10025815411",
@@ -25,7 +26,7 @@ var (
 func TestNewClient(t *testing.T) {
 	cases := []struct {
 		name   string
-		reqOne *Client
+		reqOne *pb.ClientRequest
 		reqTwo *AddressClient
 		want   *Client
 	}{

@@ -1,5 +1,7 @@
 package client
 
+import "github.com/EmmanuelleOliveira/projeto-diamante/registration_user/client/pb"
+
 type Client struct {
 	Id             int
 	Name           string
@@ -16,7 +18,7 @@ type AddressClient struct {
 	UF     string `json:"uf"`
 }
 
-func NewClient(client *Client, address *AddressClient) *Client {
+func NewClient(client *pb.ClientRequest, address *AddressClient) *Client {
 	return &Client{
 		Name:           client.Name,
 		Email:          client.Email,

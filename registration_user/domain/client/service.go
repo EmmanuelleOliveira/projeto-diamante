@@ -1,12 +1,15 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"regexp"
+
+	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/client/pb"
 )
 
 var (
@@ -21,10 +24,11 @@ var (
 )
 
 type Service struct {
-	Repository Repository
+	Repository          Repository
+	ClientServiceServer pb.ClientServiceServer
 }
 
-func (s *Service) CreateNewClient(client *Client) (*Client, error) {
+func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) (*Client, error) {
 	documentValidated, err := s.ValidateDocumentNumber(client.DocumentNumber)
 	if err != nil {
 		return nil, err
@@ -60,7 +64,7 @@ func (s *Service) CreateNewClient(client *Client) (*Client, error) {
 	return clientObj, nil
 }
 
-func (s *Service) Update(client *Client) error {
+func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) error {
 	var addressObj *AddressClient
 
 	documentValidated, err := s.ValidateDocumentNumber(client.DocumentNumber)
@@ -87,9 +91,9 @@ func (s *Service) Update(client *Client) error {
 		}
 	} else {
 		addressObj = &AddressClient{
-			Street: client.Address.Street,
-			City:   client.Address.City,
-			UF:     client.Address.UF,
+			Street: clientExist.Address.Street,
+			City:   clientExist.Address.City,
+			UF:     clientExist.Address.UF,
 		}
 	}
 
@@ -106,7 +110,7 @@ func (s *Service) Update(client *Client) error {
 
 }
 
-func (s *Service) GetAll() ([]*Client, error) {
+func (s *Service) GetAll(ctx context.Context) ([]*Client, error) {
 	var clients []*Client
 
 	clients, err := s.Repository.GetAll()
@@ -117,7 +121,7 @@ func (s *Service) GetAll() ([]*Client, error) {
 	return clients, nil
 }
 
-func (s *Service) GetClientByDocumentNumber(documentNumber string) (*Client, error) {
+func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber string) (*Client, error) {
 	documentValidated, err := s.ValidateDocumentNumber(documentNumber)
 	if err != nil {
 		return nil, ErrDocumentNumberInvalid
@@ -131,7 +135,7 @@ func (s *Service) GetClientByDocumentNumber(documentNumber string) (*Client, err
 	return client, nil
 }
 
-func (s *Service) Delete(documentNumber string) error {
+func (s *Service) Delete(ctx context.Context, documentNumber string) error {
 	documentValidated, err := s.ValidateDocumentNumber(documentNumber)
 	if err != nil {
 		return ErrDocumentNumberInvalid

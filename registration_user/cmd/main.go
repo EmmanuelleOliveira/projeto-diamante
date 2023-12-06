@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/client/pb"
 	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/database"
 	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/domain/client"
 )
@@ -14,43 +16,46 @@ func main() {
 		fmt.Println("Erro na conexão com o banco de dados:", err)
 	}
 
-	client1 := &client.Client{
+	client1 := &pb.ClientRequest{
 		Name:           "Fulano",
 		Email:          "fulano@test.com",
 		DocumentNumber: "12345678923",
 		PhoneNumber:    "1234567890",
-		Cep:            "56506100",
+		Cep:            "12240150",
 	}
 
-	client2 := &client.Client{
+	client2 := &pb.ClientRequest{
 		Name:           "Siclano",
 		Email:          "siclano@test.com",
 		DocumentNumber: "12123456835",
 		PhoneNumber:    "1234567890",
-		Cep:            "13185-404",
+		Cep:            "12228-030",
 	}
 
-	clientToUpdate := &client.Client{
+	clientToUpdate := &pb.ClientRequest{
 		Name:           "Beltrano",
 		Email:          "beltrano@test.com",
 		DocumentNumber: "12123456845",
 		PhoneNumber:    "987654321",
-		Cep:            "12423750",
+		Cep:            "01017911",
 	}
 
 	service := client.Service{
-		Repository: &database.ClientRepository{Db: db},
+		Repository:          &database.ClientRepository{Db: db},
+		ClientServiceServer: pb.UnimplementedClientServiceServer{},
 	}
 
+	var ctx context.Context
+
 	//Criação de novos usuários
-	i, err := service.CreateNewClient(client1)
+	i, err := service.CreateClient(ctx, client1)
 	if err != nil {
 		fmt.Println("Erro ao salvar o cliente:", err)
 	} else {
 		fmt.Println("Cliente salvo com sucesso", i)
 	}
 
-	x, err := service.CreateNewClient(client2)
+	x, err := service.CreateClient(ctx, client2)
 	if err != nil {
 		fmt.Println("Erro ao salvar o cliente:", err)
 	} else {
@@ -58,7 +63,7 @@ func main() {
 	}
 
 	//Busca de todos os clientes
-	listClients, err := service.GetAll()
+	listClients, err := service.GetAll(ctx)
 	if err != nil {
 		fmt.Println("Erro ao buscar a lista de clientes:", err)
 	} else {
@@ -79,7 +84,7 @@ func main() {
 	}
 
 	// Buscar cliente com número de CPF
-	client, err := service.GetClientByDocumentNumber("12345678912")
+	client, err := service.GetClientByDocumentNumber(ctx, "12345678912")
 	if err != nil {
 		fmt.Println("Erro ao buscar o cliente:", err)
 	} else {
@@ -98,12 +103,12 @@ func main() {
 	}
 
 	// Chamada da função update
-	updateClient := service.Update(clientToUpdate)
+	updateClient := service.Update(ctx, clientToUpdate)
 	if updateClient != nil {
 		fmt.Println("Erro na atualização dos dados do cliente:", err)
 	} else {
 		fmt.Println("Cliente atualizado com sucesso!")
-		clientUpdated, err := service.GetClientByDocumentNumber("12123456879")
+		clientUpdated, err := service.GetClientByDocumentNumber(ctx, "12123456879")
 		if err != nil {
 			fmt.Println("Erro ao buscar o cliente:", err)
 		} else {
@@ -123,11 +128,11 @@ func main() {
 	}
 
 	//Chamada da função delete
-	deleteErr := service.Delete(client2.DocumentNumber)
+	deleteErr := service.Delete(ctx, client2.DocumentNumber)
 	if deleteErr != nil {
 		fmt.Println("Erro ao excluir dados do cliente:", err)
 	} else {
-		listClients, err := service.GetAll()
+		listClients, err := service.GetAll(ctx)
 		if err != nil {
 			fmt.Println("Erro ao buscar a lista de clientes:", err)
 		}

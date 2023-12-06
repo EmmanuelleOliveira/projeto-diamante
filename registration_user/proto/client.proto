@@ -40,10 +40,16 @@ message ErrorResponse {
     string error = 1;
 }
 
+message DocNumberRequest {
+    string document_number = 1;
+}
+
+message EmptyField {}
+
 service ClientService {
     rpc CreateClient(ClientRequest) returns (ClientResponse) {}
-    rpc GetAllClients(Empty) returns (GetAllClientsResponse) {}
-    rpc GetClient(string) returns (ClientResponse) {}
+    rpc GetAllClients(EmptyField) returns (GetAllClientsResponse) {}
+    rpc GetClient(DocNumberRequest) returns (ClientResponse) {}
     rpc UpdateClient(ClientRequest) returns (ErrorResponse) {}
-    rpc DeleteClient(string) returns (ErrorResponse) {}
+    rpc DeleteClient(DocNumberRequest) returns (ErrorResponse) {}
 }
