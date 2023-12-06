@@ -186,32 +186,59 @@ func (s *Service) GetAll(ctx context.Context) *pb.GetAllClientsResponse {
 	}
 }
 
-func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber string) (*Client, error) {
+func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber string) *pb.ClientResponse {
 	documentValidated, err := s.ValidateDocumentNumber(documentNumber)
 	if err != nil {
-		return nil, ErrDocumentNumberInvalid
+		return &pb.ClientResponse{
+			Client: nil,
+			Error:  ErrDocumentNumberInvalid.Error(),
+		}
 	}
 
 	client, err := s.Repository.GetClientByDocumentNumber(documentValidated)
 	if err != nil {
-		return nil, ErrClientNotExist
+		return &pb.ClientResponse{
+			Client: nil,
+			Error:  ErrClientNotExist.Error(),
+		}
 	}
 
-	return client, nil
+	return &pb.ClientResponse{
+		Client: &pb.Client{
+			Id:             int32(client.Id),
+			Name:           client.Name,
+			Email:          client.Email,
+			DocumentNumber: client.DocumentNumber,
+			PhoneNumber:    client.PhoneNumber,
+			Cep:            client.Cep,
+			Address: &pb.Address{
+				Street: client.Address.Street,
+				City:   client.Address.City,
+				Uf:     client.Address.UF,
+			},
+		},
+		Error: "",
+	}
 }
 
-func (s *Service) Delete(ctx context.Context, documentNumber string) error {
+func (s *Service) Delete(ctx context.Context, documentNumber string) *pb.ErrorResponse {
 	documentValidated, err := s.ValidateDocumentNumber(documentNumber)
 	if err != nil {
-		return ErrDocumentNumberInvalid
+		return &pb.ErrorResponse{
+			Error: ErrDocumentNumberInvalid.Error(),
+		}
 	}
 
 	err = s.Repository.Delete(documentValidated)
 	if err != nil {
-		return ErrClientDelete
+		return &pb.ErrorResponse{
+			Error: ErrClientDelete.Error(),
+		}
 	}
 
-	return nil
+	return &pb.ErrorResponse{
+		Error: "",
+	}
 
 }
 
