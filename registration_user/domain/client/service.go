@@ -28,29 +28,41 @@ type Service struct {
 	ClientServiceServer pb.ClientServiceServer
 }
 
-func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) (*Client, error) {
+func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) *pb.ClientResponse {
 	documentValidated, err := s.ValidateDocumentNumber(client.DocumentNumber)
 	if err != nil {
-		return nil, err
+		return &pb.ClientResponse{
+			Client: nil,
+			Error:  err.Error(),
+		}
 	}
 
 	client.DocumentNumber = documentValidated
 
 	clientExist, _ := s.Repository.CheckClientExists(client.DocumentNumber)
 	if clientExist != nil {
-		return nil, ErrClientAlreadyExists
+		return &pb.ClientResponse{
+			Client: nil,
+			Error:  ErrClientAlreadyExists.Error(),
+		}
 	}
 
 	cep, err := s.ValidateCep(client.Cep)
 	if err != nil {
-		return nil, err
+		return &pb.ClientResponse{
+			Client: nil,
+			Error:  ErrZipCodeInvalid.Error(),
+		}
 	}
 
 	client.Cep = cep
 
 	addressObj, err := SearchZipCode(cep)
 	if err != nil {
-		return nil, ErrZipCodeInvalid
+		return &pb.ClientResponse{
+			Client: nil,
+			Error:  ErrZipCodeInvalid.Error(),
+		}
 	}
 
 	clientObj := NewClient(client, addressObj)
@@ -58,36 +70,62 @@ func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) (*
 
 	err = s.Repository.Save(clientObj)
 	if err != nil {
-		return nil, ErrSavingClient
+		return &pb.ClientResponse{
+			Client: nil,
+			Error:  ErrSavingClient.Error(),
+		}
 	}
 
-	return clientObj, nil
+	return &pb.ClientResponse{
+		Client: &pb.Client{
+			Id:             int32(clientObj.Id),
+			Name:           clientObj.Name,
+			Email:          clientObj.Email,
+			DocumentNumber: clientObj.DocumentNumber,
+			PhoneNumber:    clientObj.PhoneNumber,
+			Cep:            clientObj.Cep,
+			Address: &pb.Address{
+				Street: clientObj.Address.Street,
+				City:   clientObj.Address.City,
+				Uf:     clientObj.Address.UF,
+			},
+		},
+		Error: "",
+	}
 }
 
-func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) error {
+func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) *pb.ErrorResponse {
 	var addressObj *AddressClient
 
 	documentValidated, err := s.ValidateDocumentNumber(client.DocumentNumber)
 	if err != nil {
-		return err
+		return &pb.ErrorResponse{
+			Error: err.Error(),
+		}
 	}
 
 	client.DocumentNumber = documentValidated
 
 	clientExist, _ := s.Repository.CheckClientExists(client.DocumentNumber)
 	if clientExist == nil {
-		return ErrClientNotExist
+		return &pb.ErrorResponse{
+			Error: ErrClientNotExist.Error(),
+		}
 	}
 
 	if client.Cep != clientExist.Cep {
 		cep, err := s.ValidateCep(client.Cep)
 		if err != nil {
-			return err
+			return &pb.ErrorResponse{
+				Error: err.Error(),
+			}
 		}
 
 		addressObj, err = SearchZipCode(cep)
 		if err != nil {
-			return ErrZipCodeInvalid
+			return &pb.ErrorResponse{
+				Error: ErrZipCodeInvalid.Error(),
+			}
 		}
 	} else {
 		addressObj = &AddressClient{
@@ -103,22 +141,49 @@ func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) error {
 
 	err = s.Repository.Update(clientObj)
 	if err != nil {
-		return ErrUpdateClient
+		return &pb.ErrorResponse{
+			Error: ErrUpdateClient.Error(),
+		}
 	}
 
-	return nil
+	return &pb.ErrorResponse{
+		Error: "",
+	}
 
 }
 
-func (s *Service) GetAll(ctx context.Context) ([]*Client, error) {
+func (s *Service) GetAll(ctx context.Context) *pb.GetAllClientsResponse {
 	var clients []*Client
+	var clientsResponse []*pb.Client
 
 	clients, err := s.Repository.GetAll()
 	if err != nil {
-		return nil, ErrGetAllCLients
+		return &pb.GetAllClientsResponse{
+			Clients: nil,
+			Error:   ErrGetAllCLients.Error(),
+		}
 	}
 
-	return clients, nil
+	for _, value := range clients {
+		clientObj := &pb.Client{
+			Id:             int32(value.Id),
+			Name:           value.Name,
+			Email:          value.Email,
+			DocumentNumber: value.DocumentNumber,
+			PhoneNumber:    value.PhoneNumber,
+			Cep:            value.Cep,
+			Address: &pb.Address{
+				Street: value.Address.Street,
+				City:   value.Address.City,
+				Uf:     value.Address.UF,
+			},
+		}
+		clientsResponse = append(clientsResponse, clientObj)
+	}
+	return &pb.GetAllClientsResponse{
+		Clients: clientsResponse,
+		Error:   "",
+	}
 }
 
 func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber string) (*Client, error) {
