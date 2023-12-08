@@ -48,14 +48,14 @@ func main() {
 	var ctx context.Context
 
 	//Criação de novos usuários
-	i, err := service.CreateClient(ctx, client1)
+	i := service.CreateClient(ctx, client1)
 	if err != nil {
 		fmt.Println("Erro ao salvar o cliente:", err)
 	} else {
 		fmt.Println("Cliente salvo com sucesso", i)
 	}
 
-	x, err := service.CreateClient(ctx, client2)
+	x := service.CreateClient(ctx, client2)
 	if err != nil {
 		fmt.Println("Erro ao salvar o cliente:", err)
 	} else {
@@ -63,12 +63,12 @@ func main() {
 	}
 
 	//Busca de todos os clientes
-	listClients, err := service.GetAll(ctx)
+	listClients := service.GetAll(ctx)
 	if err != nil {
 		fmt.Println("Erro ao buscar a lista de clientes:", err)
 	} else {
 		fmt.Println("Lista de clientes:")
-		for _, client := range listClients {
+		for _, client := range listClients.Clients {
 			fmt.Printf("ID: %d, Name: %s, Email: %s, Document Number: %s, Phone Number: %s, CEP: %s, Street: %s, City: %s, UF: %s\n",
 				client.Id,
 				client.Name,
@@ -78,27 +78,27 @@ func main() {
 				client.Cep,
 				client.Address.Street,
 				client.Address.City,
-				client.Address.UF,
+				client.Address.Uf,
 			)
 		}
 	}
 
 	// Buscar cliente com número de CPF
-	client, err := service.GetClientByDocumentNumber(ctx, "12345678912")
+	client := service.GetClientByDocumentNumber(ctx, "12345678912")
 	if err != nil {
 		fmt.Println("Erro ao buscar o cliente:", err)
 	} else {
 		fmt.Println("Cliente encontrado:")
 		fmt.Printf("ID: %d, Name: %s, Email: %s, Document Number: %s, Phone Number: %s, CEP: %s, Street: %s, City: %s, UF: %s\n",
-			client.Id,
-			client.Name,
-			client.Email,
-			client.DocumentNumber,
-			client.PhoneNumber,
-			client.Cep,
-			client.Address.Street,
-			client.Address.City,
-			client.Address.UF,
+			client.Client.Id,
+			client.Client.Name,
+			client.Client.Email,
+			client.Client.DocumentNumber,
+			client.Client.PhoneNumber,
+			client.Client.Cep,
+			client.Client.Address.Street,
+			client.Client.Address.City,
+			client.Client.Address.Uf,
 		)
 	}
 
@@ -108,21 +108,21 @@ func main() {
 		fmt.Println("Erro na atualização dos dados do cliente:", err)
 	} else {
 		fmt.Println("Cliente atualizado com sucesso!")
-		clientUpdated, err := service.GetClientByDocumentNumber(ctx, "12123456879")
+		clientUpdated := service.GetClientByDocumentNumber(ctx, "12123456879")
 		if err != nil {
 			fmt.Println("Erro ao buscar o cliente:", err)
 		} else {
 			fmt.Println("Cliente encontrado:")
 			fmt.Printf("ID: %d, Name: %s, Email: %s, Document Number: %s, Phone Number: %s, CEP: %s, Street: %s, City: %s, UF: %s\n",
-				clientUpdated.Id,
-				clientUpdated.Name,
-				clientUpdated.Email,
-				clientUpdated.DocumentNumber,
-				clientUpdated.PhoneNumber,
-				clientUpdated.Cep,
-				clientUpdated.Address.Street,
-				clientUpdated.Address.City,
-				clientUpdated.Address.UF,
+				clientUpdated.Client.Id,
+				clientUpdated.Client.Name,
+				clientUpdated.Client.Email,
+				clientUpdated.Client.DocumentNumber,
+				clientUpdated.Client.PhoneNumber,
+				clientUpdated.Client.Cep,
+				clientUpdated.Client.Address.Street,
+				clientUpdated.Client.Address.City,
+				clientUpdated.Client.Address.Uf,
 			)
 		}
 	}
@@ -132,13 +132,13 @@ func main() {
 	if deleteErr != nil {
 		fmt.Println("Erro ao excluir dados do cliente:", err)
 	} else {
-		listClients, err := service.GetAll(ctx)
+		listClients := service.GetAll(ctx)
 		if err != nil {
 			fmt.Println("Erro ao buscar a lista de clientes:", err)
 		}
 
 		fmt.Println("Lista de clientes atualizada:")
-		for _, client := range listClients {
+		for _, client := range listClients.Clients {
 			fmt.Printf("ID: %d, Name: %s, Email: %s, Document Number: %s, Phone Number: %s, CEP: %s, Street: %s, City: %s, UF: %s\n",
 				client.Id,
 				client.Name,
@@ -148,7 +148,7 @@ func main() {
 				client.Cep,
 				client.Address.Street,
 				client.Address.City,
-				client.Address.UF,
+				client.Address.Uf,
 			)
 		}
 
