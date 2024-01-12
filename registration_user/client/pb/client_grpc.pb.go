@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	"errors"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -99,7 +100,7 @@ type UnimplementedClientServiceServer struct {
 }
 
 func (UnimplementedClientServiceServer) CreateClient(context.Context, *ClientRequest) (*ClientResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateClient not implemented")
+	return &ClientResponse{}, errors.New("entrei aqui")
 }
 func (UnimplementedClientServiceServer) GetAllClients(context.Context, *EmptyField) (*GetAllClientsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAllClients not implemented")

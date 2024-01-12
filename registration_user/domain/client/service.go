@@ -28,13 +28,13 @@ type Service struct {
 	ClientServiceServer pb.ClientServiceServer
 }
 
-func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) *pb.ClientResponse {
+func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) (*pb.ClientResponse, error) {
 	documentValidated, err := s.ValidateDocumentNumber(client.DocumentNumber)
 	if err != nil {
 		return &pb.ClientResponse{
 			Client: nil,
 			Error:  err.Error(),
-		}
+		}, nil
 	}
 
 	client.DocumentNumber = documentValidated
@@ -44,7 +44,7 @@ func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) *p
 		return &pb.ClientResponse{
 			Client: nil,
 			Error:  ErrClientAlreadyExists.Error(),
-		}
+		}, nil
 	}
 
 	cep, err := s.ValidateCep(client.Cep)
@@ -52,7 +52,7 @@ func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) *p
 		return &pb.ClientResponse{
 			Client: nil,
 			Error:  ErrZipCodeInvalid.Error(),
-		}
+		}, nil
 	}
 
 	client.Cep = cep
@@ -62,7 +62,7 @@ func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) *p
 		return &pb.ClientResponse{
 			Client: nil,
 			Error:  ErrZipCodeInvalid.Error(),
-		}
+		}, nil
 	}
 
 	clientObj := NewClient(client, addressObj)
@@ -73,7 +73,7 @@ func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) *p
 		return &pb.ClientResponse{
 			Client: nil,
 			Error:  ErrSavingClient.Error(),
-		}
+		}, nil
 	}
 
 	return &pb.ClientResponse{
@@ -91,17 +91,17 @@ func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) *p
 			},
 		},
 		Error: "",
-	}
+	}, nil
 }
 
-func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) *pb.ErrorResponse {
+func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) (*pb.ErrorResponse, error) {
 	var addressObj *AddressClient
 
 	documentValidated, err := s.ValidateDocumentNumber(client.DocumentNumber)
 	if err != nil {
 		return &pb.ErrorResponse{
 			Error: err.Error(),
-		}
+		}, err
 	}
 
 	client.DocumentNumber = documentValidated
@@ -110,7 +110,7 @@ func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) *pb.Erro
 	if clientExist == nil {
 		return &pb.ErrorResponse{
 			Error: ErrClientNotExist.Error(),
-		}
+		}, err
 	}
 
 	if client.Cep != clientExist.Cep {
@@ -118,14 +118,14 @@ func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) *pb.Erro
 		if err != nil {
 			return &pb.ErrorResponse{
 				Error: err.Error(),
-			}
+			}, err
 		}
 
 		addressObj, err = SearchZipCode(cep)
 		if err != nil {
 			return &pb.ErrorResponse{
 				Error: ErrZipCodeInvalid.Error(),
-			}
+			}, err
 		}
 	} else {
 		addressObj = &AddressClient{
@@ -143,16 +143,16 @@ func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) *pb.Erro
 	if err != nil {
 		return &pb.ErrorResponse{
 			Error: ErrUpdateClient.Error(),
-		}
+		}, err
 	}
 
 	return &pb.ErrorResponse{
 		Error: "",
-	}
+	}, nil
 
 }
 
-func (s *Service) GetAll(ctx context.Context) *pb.GetAllClientsResponse {
+func (s *Service) GetAllClients(ctx context.Context, _ *pb.EmptyField) (*pb.GetAllClientsResponse, error) {
 	var clients []*Client
 	var clientsResponse []*pb.Client
 
@@ -161,7 +161,7 @@ func (s *Service) GetAll(ctx context.Context) *pb.GetAllClientsResponse {
 		return &pb.GetAllClientsResponse{
 			Clients: nil,
 			Error:   ErrGetAllCLients.Error(),
-		}
+		}, err
 	}
 
 	for _, value := range clients {
@@ -183,16 +183,16 @@ func (s *Service) GetAll(ctx context.Context) *pb.GetAllClientsResponse {
 	return &pb.GetAllClientsResponse{
 		Clients: clientsResponse,
 		Error:   "",
-	}
+	}, nil
 }
 
-func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber string) *pb.ClientResponse {
-	documentValidated, err := s.ValidateDocumentNumber(documentNumber)
+func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber *pb.DocNumberRequest) (*pb.ClientResponse, error) {
+	documentValidated, err := s.ValidateDocumentNumber(documentNumber.String())
 	if err != nil {
 		return &pb.ClientResponse{
 			Client: nil,
 			Error:  ErrDocumentNumberInvalid.Error(),
-		}
+		}, err
 	}
 
 	client, err := s.Repository.GetClientByDocumentNumber(documentValidated)
@@ -200,7 +200,7 @@ func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber 
 		return &pb.ClientResponse{
 			Client: nil,
 			Error:  ErrClientNotExist.Error(),
-		}
+		}, err
 	}
 
 	return &pb.ClientResponse{
@@ -218,27 +218,27 @@ func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber 
 			},
 		},
 		Error: "",
-	}
+	}, nil
 }
 
-func (s *Service) Delete(ctx context.Context, documentNumber string) *pb.ErrorResponse {
-	documentValidated, err := s.ValidateDocumentNumber(documentNumber)
+func (s *Service) DeleteClient(ctx context.Context, documentNumber *pb.DocNumberRequest) (*pb.ErrorResponse, error) {
+	documentValidated, err := s.ValidateDocumentNumber(documentNumber.String())
 	if err != nil {
 		return &pb.ErrorResponse{
 			Error: ErrDocumentNumberInvalid.Error(),
-		}
+		}, err
 	}
 
 	err = s.Repository.Delete(documentValidated)
 	if err != nil {
 		return &pb.ErrorResponse{
 			Error: ErrClientDelete.Error(),
-		}
+		}, err
 	}
 
 	return &pb.ErrorResponse{
 		Error: "",
-	}
+	}, nil
 
 }
 
