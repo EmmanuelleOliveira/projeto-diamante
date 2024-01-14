@@ -1,9 +1,7 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"log"
 	"net"
 
 	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/client/pb"
@@ -12,56 +10,27 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	port = flag.Int("port", 3000, "The port on which the server will listen")
-)
-
 func main() {
 	db, err := database.ConnectionDB()
 	if err != nil {
-		fmt.Println("Erro na conexão com o banco de dados:", err)
+		panic(err)
 	}
 
-	service := client.Service{
-		Repository:          &database.ClientRepository{Db: db},
-		ClientServiceServer: pb.UnimplementedClientServiceServer{},
-	}
+	fmt.Println("connection database ok!")
 
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
+	clientDB := database.NewClientRepository(db)
+	clientService := client.NewClientService(*clientDB)
+
+	grpcServer := grpc.NewServer()
+	pb.RegisterClientServiceServer(grpcServer, clientService)
+
+	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		panic(err)
 	}
 
-	var opts []grpc.ServerOption
-
-	grpcServer := grpc.NewServer(opts...)
-	pb.RegisterClientServiceServer(grpcServer, service.ClientServiceServer)
-	grpcServer.Serve(lis)
-
+	err = grpcServer.Serve(lis)
+	if err != nil {
+		panic(err)
+	}
 }
-
-// var (
-// 	port = flag.Int("port", 3000, "The port on which the server will listen")
-// )
-
-// func main() {
-// 	db, err := database.ConnectionDB()
-// 	if err != nil {
-// 		fmt.Println("Erro na conexão com o banco de dados:", err)
-// 	}
-
-// 	service := &client.Service{
-// 		Repository: &database.ClientRepository{Db: db},
-// 	}
-
-// 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
-// 	if err != nil {
-// 		log.Fatalf("failed to listen: %v", err)
-// 	}
-
-// 	var opts []grpc.ServerOption
-
-// 	grpcServer := grpc.NewServer(opts...)
-// 	pb.RegisterClientServiceServer(grpcServer, service)
-// 	grpcServer.Serve(lis)
-// }
