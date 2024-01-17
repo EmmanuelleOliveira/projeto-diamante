@@ -10,6 +10,7 @@ import (
 	"regexp"
 
 	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/client/pb"
+	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/database"
 )
 
 var (
@@ -23,12 +24,18 @@ var (
 	ErrClientDelete          = errors.New("error deleting client")
 )
 
-type Service struct {
-	Repository          Repository
-	ClientServiceServer pb.ClientServiceServer
+type ClientService struct {
+	pb.UnimplementedClientServiceServer
+	ClientDB database.Client
 }
 
-func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) (*pb.ClientResponse, error) {
+func NewClientService(clientDb database.Client) *ClientService {
+	return &ClientService{
+		ClientDB: clientDb,
+	}
+}
+
+func (s *ClientService) CreateClient(ctx context.Context, client *pb.ClientRequest) (*pb.ClientResponse, error) {
 	documentValidated, err := s.ValidateDocumentNumber(client.DocumentNumber)
 	if err != nil {
 		return &pb.ClientResponse{
@@ -39,7 +46,7 @@ func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) (*
 
 	client.DocumentNumber = documentValidated
 
-	clientExist, _ := s.Repository.CheckClientExists(client.DocumentNumber)
+	clientExist, _ := s.ClientDB.CheckClientExists(client.DocumentNumber)
 	if clientExist != nil {
 		return &pb.ClientResponse{
 			Client: nil,
@@ -65,10 +72,11 @@ func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) (*
 		}, nil
 	}
 
-	clientObj := NewClient(client, addressObj)
+	clientObj := database.NewClient(client, addressObj)
 	fmt.Println(clientObj)
 
-	err = s.Repository.Save(clientObj)
+	err = s.ClientDB.Save(clientObj)
+	fmt.Println("Err: ", err)
 	if err != nil {
 		return &pb.ClientResponse{
 			Client: nil,
@@ -94,8 +102,8 @@ func (s *Service) CreateClient(ctx context.Context, client *pb.ClientRequest) (*
 	}, nil
 }
 
-func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) (*pb.ErrorResponse, error) {
-	var addressObj *AddressClient
+func (s *ClientService) Update(ctx context.Context, client *pb.ClientRequest) (*pb.ErrorResponse, error) {
+	var addressObj *database.AddressClient
 
 	documentValidated, err := s.ValidateDocumentNumber(client.DocumentNumber)
 	if err != nil {
@@ -106,7 +114,7 @@ func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) (*pb.Err
 
 	client.DocumentNumber = documentValidated
 
-	clientExist, _ := s.Repository.CheckClientExists(client.DocumentNumber)
+	clientExist, _ := s.ClientDB.CheckClientExists(client.DocumentNumber)
 	if clientExist == nil {
 		return &pb.ErrorResponse{
 			Error: ErrClientNotExist.Error(),
@@ -128,18 +136,18 @@ func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) (*pb.Err
 			}, err
 		}
 	} else {
-		addressObj = &AddressClient{
+		addressObj = &database.AddressClient{
 			Street: clientExist.Address.Street,
 			City:   clientExist.Address.City,
 			UF:     clientExist.Address.UF,
 		}
 	}
 
-	clientObj := NewClient(client, addressObj)
+	clientObj := database.NewClient(client, addressObj)
 
 	clientObj.Id = clientExist.Id
 
-	err = s.Repository.Update(clientObj)
+	err = s.ClientDB.Update(clientObj)
 	if err != nil {
 		return &pb.ErrorResponse{
 			Error: ErrUpdateClient.Error(),
@@ -152,11 +160,11 @@ func (s *Service) Update(ctx context.Context, client *pb.ClientRequest) (*pb.Err
 
 }
 
-func (s *Service) GetAllClients(ctx context.Context, _ *pb.EmptyField) (*pb.GetAllClientsResponse, error) {
-	var clients []*Client
+func (s *ClientService) GetAllClients(ctx context.Context, _ *pb.EmptyField) (*pb.GetAllClientsResponse, error) {
+	var clients []*database.Client
 	var clientsResponse []*pb.Client
 
-	clients, err := s.Repository.GetAll()
+	clients, err := s.ClientDB.GetAll()
 	if err != nil {
 		return &pb.GetAllClientsResponse{
 			Clients: nil,
@@ -186,7 +194,7 @@ func (s *Service) GetAllClients(ctx context.Context, _ *pb.EmptyField) (*pb.GetA
 	}, nil
 }
 
-func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber *pb.DocNumberRequest) (*pb.ClientResponse, error) {
+func (s *ClientService) GetClientByDocumentNumber(ctx context.Context, documentNumber *pb.DocNumberRequest) (*pb.ClientResponse, error) {
 	documentValidated, err := s.ValidateDocumentNumber(documentNumber.String())
 	if err != nil {
 		return &pb.ClientResponse{
@@ -195,7 +203,7 @@ func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber 
 		}, err
 	}
 
-	client, err := s.Repository.GetClientByDocumentNumber(documentValidated)
+	client, err := s.ClientDB.GetClientByDocumentNumber(documentValidated)
 	if err != nil {
 		return &pb.ClientResponse{
 			Client: nil,
@@ -221,7 +229,7 @@ func (s *Service) GetClientByDocumentNumber(ctx context.Context, documentNumber 
 	}, nil
 }
 
-func (s *Service) DeleteClient(ctx context.Context, documentNumber *pb.DocNumberRequest) (*pb.ErrorResponse, error) {
+func (s *ClientService) DeleteClient(ctx context.Context, documentNumber *pb.DocNumberRequest) (*pb.ErrorResponse, error) {
 	documentValidated, err := s.ValidateDocumentNumber(documentNumber.String())
 	if err != nil {
 		return &pb.ErrorResponse{
@@ -229,7 +237,7 @@ func (s *Service) DeleteClient(ctx context.Context, documentNumber *pb.DocNumber
 		}, err
 	}
 
-	err = s.Repository.Delete(documentValidated)
+	err = s.ClientDB.Delete(documentValidated)
 	if err != nil {
 		return &pb.ErrorResponse{
 			Error: ErrClientDelete.Error(),
@@ -242,7 +250,7 @@ func (s *Service) DeleteClient(ctx context.Context, documentNumber *pb.DocNumber
 
 }
 
-func (s *Service) ValidateDocumentNumber(documentNumber string) (string, error) {
+func (s *ClientService) ValidateDocumentNumber(documentNumber string) (string, error) {
 	documentNumberObj, _ := regexp.Compile(`[-.,-]`)
 	docNumber := documentNumberObj.ReplaceAllString(documentNumber, "")
 
@@ -254,20 +262,17 @@ func (s *Service) ValidateDocumentNumber(documentNumber string) (string, error) 
 
 }
 
-func (s *Service) ValidateCep(cep string) (string, error) {
+func (s *ClientService) ValidateCep(cep string) (string, error) {
+	cepValidated := regexp.MustCompile(`[-.]`).ReplaceAllString(cep, "")
 
-	re := regexp.MustCompile(`^\d{5}-\d{3}$`)
-
-	if re.MatchString(cep) {
-		cepObj, _ := regexp.Compile(`[-.,-]`)
-		cepValidated := cepObj.ReplaceAllString(cep, "")
+	if len(cepValidated) == 8 {
 		return cepValidated, nil
-	} else {
-		return "", ErrZipCodeInvalid
 	}
+	return "", ErrZipCodeInvalid
+
 }
 
-func SearchZipCode(cep string) (*AddressClient, error) {
+func SearchZipCode(cep string) (*database.AddressClient, error) {
 	resp, err := http.Get("http://viacep.com.br/ws/" + cep + "/json")
 	if err != nil {
 		return nil, err
@@ -293,7 +298,7 @@ func SearchZipCode(cep string) (*AddressClient, error) {
 		return nil, errors.New("zip code invalid")
 	}
 
-	var c AddressClient
+	var c database.AddressClient
 
 	err = json.Unmarshal(body, &c)
 	if err != nil {
@@ -306,5 +311,3 @@ func SearchZipCode(cep string) (*AddressClient, error) {
 
 	return &c, nil
 }
-
-//criar getAll, getClientByDocumentNumber
