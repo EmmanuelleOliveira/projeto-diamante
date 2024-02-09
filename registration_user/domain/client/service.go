@@ -99,7 +99,7 @@ func (s *ClientService) CreateClient(ctx context.Context, client *pb.ClientReque
 	}, nil
 }
 
-func (s *ClientService) Update(ctx context.Context, client *pb.ClientRequest) (*pb.ErrorResponse, error) {
+func (s *ClientService) UpdateClient(ctx context.Context, client *pb.ClientRequest) (*pb.ErrorResponse, error) {
 	var addressObj *database.AddressClient
 
 	documentValidated, err := s.ValidateDocumentNumber(client.DocumentNumber)
@@ -191,8 +191,9 @@ func (s *ClientService) GetAllClients(ctx context.Context, _ *pb.EmptyField) (*p
 	}, nil
 }
 
-func (s *ClientService) GetClientByDocumentNumber(ctx context.Context, documentNumber *pb.DocNumberRequest) (*pb.ClientResponse, error) {
-	documentValidated, err := s.ValidateDocumentNumber(documentNumber.String())
+func (s *ClientService) GetClient(ctx context.Context, documentNumber *pb.DocNumberRequest) (*pb.ClientResponse, error) {
+
+	documentValidated, err := s.ValidateDocumentNumber(documentNumber.GetDocumentNumber())
 	if err != nil {
 		return &pb.ClientResponse{
 			Client: nil,
@@ -227,7 +228,7 @@ func (s *ClientService) GetClientByDocumentNumber(ctx context.Context, documentN
 }
 
 func (s *ClientService) DeleteClient(ctx context.Context, documentNumber *pb.DocNumberRequest) (*pb.ErrorResponse, error) {
-	documentValidated, err := s.ValidateDocumentNumber(documentNumber.String())
+	documentValidated, err := s.ValidateDocumentNumber(documentNumber.GetDocumentNumber())
 	if err != nil {
 		return &pb.ErrorResponse{
 			Error: ErrDocumentNumberInvalid.Error(),
