@@ -2,8 +2,6 @@ package database
 
 import (
 	"database/sql"
-
-	"github.com/EmmanuelleOliveira/projeto-diamante/registration_user/client/pb"
 )
 
 type Client struct {
@@ -27,21 +25,6 @@ func NewClientRepository(db *sql.DB) *Client {
 	return &Client{db: db}
 }
 
-func NewClient(client *pb.ClientRequest, address *AddressClient) *Client {
-	return &Client{
-		Name:           client.Name,
-		Email:          client.Email,
-		DocumentNumber: client.DocumentNumber,
-		PhoneNumber:    client.PhoneNumber,
-		Cep:            client.Cep,
-		Address: AddressClient{
-			Street: address.Street,
-			City:   address.City,
-			UF:     address.UF,
-		},
-	}
-}
-
 func (c *Client) Save(client *Client) error {
 	stmt, err := c.db.Prepare("INSERT INTO user(name, email, document_number, phone_number, cep, street, city, uf) VALUES (?,?,?,?,?,?,?,?)")
 	if err != nil {
@@ -49,7 +32,7 @@ func (c *Client) Save(client *Client) error {
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(
+	result, err := stmt.Exec(
 		client.Name,
 		client.Email,
 		client.DocumentNumber,
@@ -62,6 +45,13 @@ func (c *Client) Save(client *Client) error {
 	if err != nil {
 		return err
 	}
+
+	clientID, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	client.Id = int(clientID)
 
 	return nil
 }

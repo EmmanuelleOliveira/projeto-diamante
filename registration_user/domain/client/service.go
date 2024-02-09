@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -72,11 +71,9 @@ func (s *ClientService) CreateClient(ctx context.Context, client *pb.ClientReque
 		}, nil
 	}
 
-	clientObj := database.NewClient(client, addressObj)
-	fmt.Println(clientObj)
+	clientObj := NewClient(client, addressObj)
 
 	err = s.ClientDB.Save(clientObj)
-	fmt.Println("Err: ", err)
 	if err != nil {
 		return &pb.ClientResponse{
 			Client: nil,
@@ -143,7 +140,7 @@ func (s *ClientService) Update(ctx context.Context, client *pb.ClientRequest) (*
 		}
 	}
 
-	clientObj := database.NewClient(client, addressObj)
+	clientObj := NewClient(client, addressObj)
 
 	clientObj.Id = clientExist.Id
 
